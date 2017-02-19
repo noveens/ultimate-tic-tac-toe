@@ -8,7 +8,7 @@ class TimedOutExc(Exception):
 	pass
 
 def handler(signum, frame):
-	#print 'Signal handler called with signal', signum
+	print 'Signal handler called with signal', signum
 	raise TimedOutExc()
 
 class BondPlayer():
@@ -32,7 +32,10 @@ class BondPlayer():
 		# when this is first_move some are shitty moves
 
 		ans = -self.INF
-		r, c = 0,0
+		r = allowed_moves[0][0]
+		c = allowed_moves[0][1]
+		r_b = r
+		c_b = c
 
 
 		for level in range(2, 5, 1):
@@ -48,6 +51,8 @@ class BondPlayer():
 				r = ret[0]
 				c = ret[1]
 
+		if r == r_b and c == c_b:
+			print ret[2]
 		return (r, c)
 
 	def minimax(self, allowed_moves, level, allowed_level, old_move):
@@ -57,7 +62,7 @@ class BondPlayer():
 			else:
 				ans = self.INF
 
-			r, c = 0, 0
+			r, c = 0,0
 
 			for move in allowed_moves:
 				if level >= allowed_level:
@@ -66,41 +71,39 @@ class BondPlayer():
 						self.type = 'o'
 					else:
 						self.type = 'x'
+					
 					them = self.heuristic()
 					if self.type == 'x':
 						self.type = 'o'
 					else:
 						self.type = 'x'
-					return our - them
+					print 'retrning ', our - them;
+					return (r, c, our - them)
 
-				print old_move, move
 				self.board.update(old_move, move, self.type)
-				print '1'
 
 				allowed_moves = self.board.find_valid_move_cells(old_move)
-				print '2'
 				ret = self.minimax(allowed_moves, level+1, allowed_level, move)
 				if level % 2 == 0:
-					if ret >= ans:
-						ans = ret
+					print 'retrning minimising ', ans, ' ret =  ', ret[2]
+					if ret[2] <= ans:
+						ans = ret[2]
 						r = move[0]
 						c = move[1]
-					#ans = max(ans, ret)
 
 				else:
-					#ans = min(ans, ret)
-					if ret <= ans:
-						ans = ret
+					if ret[2] >= ans:
+						ans = ret[2]
 						r = move[0]
 						c = move[1]
 				
-				self.board.update(old_move, move, ' ')
+				self.board.update(old_move, move, '-')
 
 			some_var = (r, c, ans)
-
 			return some_var
 
 	def heuristic(self):
+
 		ans = 0
 
 		for r in range(0,4):
@@ -140,7 +143,7 @@ class BondPlayer():
 			for c in range(0,4):
 				if self.board.block_status[r][c] == self.type:
 					cross += 1
-				elif self.board.block_status[r][c] != ' ':
+				elif self.board.block_status[r][c] != '-':
 					ow += 1
 			
 			if cross == 2 and ow == 0:
@@ -155,7 +158,7 @@ class BondPlayer():
 			for r in range(0,4):
 				if self.board.block_status[r][c] == self.type:
 					cross += 1
-				elif self.board.block_status[r][c] != ' ':
+				elif self.board.block_status[r][c] != '-':
 					ow += 1
 			
 			if cross == 2 and ow == 0:
@@ -170,7 +173,7 @@ class BondPlayer():
 
 			if self.board.block_status[r][r] == self.type:
 				cross+=1;
-			elif self.board.block_status[r][r] != ' ':
+			elif self.board.block_status[r][r] != '-':
 				ow += 1
 		if cross == 2 and ow == 0:
 			ans += 4
@@ -188,7 +191,7 @@ class BondPlayer():
 					for c in range(zz*4,(zz*4)+4):
 						if self.board.board_status[r][c] == self.type:
 							cross += 1
-						elif self.board.board_status[r][c] != ' ':
+						elif self.board.board_status[r][c] != '-':
 							ow += 1
 					
 					if cross == 2 and ow == 0:
@@ -205,7 +208,7 @@ class BondPlayer():
 					for r in range(zz*4,(zz*4)+4):
 						if self.board.board_status[r][c] == self.type:
 							cross += 1
-						elif self.board.board_status[r][c] != ' ':
+						elif self.board.board_status[r][c] != '-':
 							ow += 1
 			
 					if cross == 2 and ow == 0:
@@ -219,10 +222,9 @@ class BondPlayer():
 		for zz in range(0,4):
 			for z in range(0,4):
 				for r in range(zz*4,(zz*4)+4):
-
-					if self.board.board_status[r+(4*z)][r+(4*z)] == self.type:
+					if self.board.board_status[r][r+(4*z)-(zz*4)] == self.type:
 						cross+=1;
-					elif self.board.board_status[r+(4*z)][r+(4*z)] != ' ':
+					elif self.board.board_status[r][r+(4*z)-(zz*4)] != '-':
 						ow += 1
 				if cross == 2 and ow == 0:
 					ans += 4

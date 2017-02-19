@@ -1,5 +1,3 @@
-import numpy as np
-
 class BondPlayer():
 	def __init__(self):
 		self.time_elapsed = 0
@@ -23,11 +21,12 @@ class BondPlayer():
 		ans = -self.INF
 		r, c = 0,0
 
+
 		for level in range(2, 5, 1):
 			# perform dfs upto level 'level'
 
 			ret = self.minimax( 
-				allowed_moves, 1, level
+				allowed_moves, 1, level, old_move
 			)
 
 			ans = max(ans, ret)
@@ -38,7 +37,7 @@ class BondPlayer():
 
 		return (r, c)
 
-	def minimax(self, allowed_moves, level, allowed_level):
+	def minimax(self, allowed_moves, level, allowed_level, old_move):
 			if level % 2 == 1:
 				ans = -self.INF
 
@@ -61,10 +60,13 @@ class BondPlayer():
 						self.type = 'x'
 					return our - them
 
+				print old_move, move
 				self.board.update(old_move, move, self.type)
+				print '1'
 
-				allowed_moves = board.find_valid_move_cells(old_move)
-				ret = self.minimax(allowed_moves, level+1, allowed_level)
+				allowed_moves = self.board.find_valid_move_cells(old_move)
+				print allowed_moves
+				ret = self.minimax(allowed_moves, level+1, allowed_level, move)
 				if level % 2 == 0:
 					if ret >= ans:
 						ans = ret
@@ -86,6 +88,7 @@ class BondPlayer():
 			return some_var
 
 	def heuristic(self):
+
 		ans = 0
 
 		for r in range(0,4):
@@ -125,7 +128,7 @@ class BondPlayer():
 			for c in range(0,4):
 				if self.board.block_status[r][c] == self.type:
 					cross += 1
-				else if self.board.block_status[r][c] != ' ':
+				elif self.board.block_status[r][c] != ' ':
 					ow += 1
 			
 			if cross == 2 and ow == 0:
@@ -140,7 +143,7 @@ class BondPlayer():
 			for r in range(0,4):
 				if self.board.block_status[r][c] == self.type:
 					cross += 1
-				else if self.board.block_status[r][c] != ' ':
+				elif self.board.block_status[r][c] != ' ':
 					ow += 1
 			
 			if cross == 2 and ow == 0:
@@ -155,7 +158,7 @@ class BondPlayer():
 
 			if self.board.block_status[r][r] == self.type:
 				cross+=1;
-			else if self.board.block_status[r][r] != ' ':
+			elif self.board.block_status[r][r] != ' ':
 				ow += 1
 		if cross == 2 and ow == 0:
 			ans += 4
@@ -173,7 +176,7 @@ class BondPlayer():
 					for c in range(zz*4,(zz*4)+4):
 						if self.board.board_status[r][c] == self.type:
 							cross += 1
-						else if self.board.board_status[r][c] != ' ':
+						elif self.board.board_status[r][c] != ' ':
 							ow += 1
 					
 					if cross == 2 and ow == 0:
@@ -190,7 +193,7 @@ class BondPlayer():
 					for r in range(zz*4,(zz*4)+4):
 						if self.board.board_status[r][c] == self.type:
 							cross += 1
-						else if self.board.board_status[r][c] != ' ':
+						elif self.board.board_status[r][c] != ' ':
 							ow += 1
 			
 					if cross == 2 and ow == 0:
@@ -200,18 +203,19 @@ class BondPlayer():
 						ans += 3
 
 		# checking 2 or 3 in dioganal rest empty
+		print '1'
 		cross, ow = 0, 0
 		for zz in range(0,4):
 			for z in range(0,4):
 				for r in range(zz*4,(zz*4)+4):
-
-					if self.board.board_status[r+(4*z)][r+(4*z)] == self.type:
+					if self.board.board_status[r][r+(4*z)] == self.type:
 						cross+=1;
-					else if self.board.board_status[r+(4*z)][r+(4*z)] != ' ':
+					elif self.board.board_status[r][r+(4*z)] != ' ':
 						ow += 1
 				if cross == 2 and ow == 0:
 					ans += 4
 				if cross == 3 and ow == 0:
 					ans += 6
 
+		print 'enter heur'
 		return ans;
