@@ -3,6 +3,9 @@ import random
 import signal
 import time
 import copy
+import datetime
+from Aman import *
+from P2 import *
 
 class TimedOutExc(Exception):
 	pass
@@ -11,12 +14,438 @@ def handler(signum, frame):
 	print 'Signal handler called with signal', signum
 	raise TimedOutExc()
 
+class Intelligent_Player():
+	def __init__(self):
+		self.INFINITY = 100
+		self.maxSearchDepth = 2
+		self.marker = 'x'
+		self.myMove = False
+		return
+
+	def heuristics(self, oldMove, newMove, board):
+		currFlag = 'x'
+
+		ownFlag = self.marker
+		if(self.myMove):
+			currFlag = ownFlag
+		else:
+			currFlag = self.getMarker(ownFlag)
+
+		#checking if own turn or opponents turn
+		varMM = 0
+		if(self.myMove == False):
+			varMM = -1 #opponents turn
+		else:
+			varMM = 1 #own turn
+
+		tempBoard = copy.deepcopy(board)
+
+		#bs = tempBoard.board_status
+		status = tempBoard.find_terminal_state()
+		#if game has already ended
+		if status[1] == 'WON':
+			return varMM*10000
+		elif status[1] == 'DRAW': #have to maximize score with draw
+			x=0
+			o=0
+			for i in range(4):
+				for j in range(4):
+					if tempBoard.block_status[i][j] == 'x':
+						x += 1
+					if tempBoard.block_status[i][j] == 'o':
+						o += 1
+			if(ownFlag == 'x'):
+				return (x-o)
+			else:
+				return (o-x)
+
+		#if the game is not yet over heuristics acc to current scenario
+		heurVal = 0
+
+		bs = tempBoard.block_status
+
+		##############################################################
+		#checking for continuous blocks or cutting other blocks
+		##############################################################
+
+		#checking rows
+		for i in range(4):
+			fl = 0
+			count = 0
+			for j in range(4):
+				if bs[i][j] == self.getMarker(ownFlag):
+					fl = 1
+				if bs[i][j] == ownFlag:
+					count+=1
+			if(fl == 0 and count>0):
+				for j in range(4):
+					heurVal += (2 if bs[i][j]==ownFlag else 0)
+			if(fl == 1 and count>0):
+				for j in range(4):
+					heurVal += (3 if bs[i][j]==self.getMarker(ownFlag) else 0)
+
+		#checking columns
+		for j in range(4):
+			fl = 0
+			count = 0
+			for i in range(4):
+				if bs[i][j] == self.getMarker(ownFlag):
+					fl = 1
+				if bs[i][j] == ownFlag:
+					count+=1
+			if(fl == 0 and count>0):
+				for i in range(4):
+					heurVal += (2 if bs[i][j]==ownFlag else 0)
+			if(fl == 1 and count>0):
+				for i in range(4):
+					heurVal += (3 if bs[i][j]==self.getMarker(ownFlag) else 0)
+
+
+		#checking forward diagonal
+ 		fl = 0
+		count = 0
+		for i in range(4):
+			if bs[i][i] == self.getMarker(ownFlag):
+				fl = 1
+			if bs[i][i] == ownFlag:
+				count+=1
+		if(fl == 0 and count>0):
+			for i in range(4):
+				heurVal += (2 if bs[i][i]==ownFlag else 0)
+		if(fl == 1 and count>0):
+			for i in range(4):
+				heurVal += (3 if bs[i][i]==self.getMarker(ownFlag) else 0)
+
+		#checking back diagonal
+		fl = 0
+		count = 0
+		for i in range(4):
+			if bs[3-i][i] == self.getMarker(ownFlag):
+				fl = 1
+			if bs[3-i][i] == ownFlag:
+				count+=1
+		if(fl == 0 and count>0):
+			for i in range(4):
+				heurVal += (2 if bs[3-i][i]==ownFlag else 0)
+		if(fl == 1 and count>0):
+			for i in range(4):
+				heurVal += (3 if bs[3-i][i]==self.getMarker(ownFlag) else 0)
+
+		#############################################################
+		#checking for continuous cells in each block or cutting
+		##############################################################
+		BS = tempBoard.board_status
+		for k in range(4):
+			for l in range(4):
+
+				#checking rows
+				for i in range(4):
+					fl = 0
+					count = 0
+					for j in range(4):
+						if BS[4*k + i][4*l + j] == self.getMarker(ownFlag):
+							fl = 1
+						if BS[4*k + i][4*l + j] == ownFlag:
+							count+=1
+					if(fl == 0 and count>0):
+						# print "continuous row"
+						for j in range(4):
+							heurVal += (2 if BS[4*k+i][4*l+j]==ownFlag else 0)
+					if(fl == 1 and count>0):
+						# print "row kaata"
+						for j in range(4):
+							heurVal += (3 if BS[4*k+i][4*l+j]==self.getMarker(ownFlag) else 0)
+
+				#checking columns
+				for j in range(4):
+					fl = 0
+					count = 0
+					for i in range(4):
+						if BS[4*k + i][4*l + j] == self.getMarker(ownFlag):
+							fl = 1
+						if BS[4*k + i][4*l + j] == ownFlag:
+							count+=1
+					if(fl == 0 and count>0):
+						# print "continuous columns"
+						for i in range(4):
+							heurVal += (2 if BS[4*k+i][4*l+j]==ownFlag else 0)
+					if(fl == 1 and count>0):
+						# print "column kaata"
+						for i in range(4):
+							heurVal += (3 if BS[4*k+i][4*l+j]==self.getMarker(ownFlag) else 0)
+
+				#checking forward diagonal
+		 		fl = 0
+				count = 0
+				for i in range(4):
+					if BS[4*k+i][4*l+i] == self.getMarker(ownFlag):
+						fl = 1
+					if BS[4*k + i][4*l + i] == ownFlag:
+						count+=1
+				if(fl == 0 and count>0):
+					# print "continous diagonal"
+					for i in range(4):
+						heurVal += (2 if BS[4*k+i][4*l+i]==ownFlag else 0)
+				if(fl == 1 and count>0):
+					# print "diagonal kaata"
+					for i in range(4):
+						heurVal += (3 if BS[4*k+i][4*l+i]==self.getMarker(ownFlag) else 0)
+
+				#checking back diagonal
+				fl = 0
+				count=0
+				for i in range(4):
+					if BS[4*k+3-i][4*l+i] == self.getMarker(ownFlag):
+						fl = 1
+					if BS[4*k+3-i][4*l+i] == ownFlag:
+						count+=1
+				if(fl == 0 and count>0):
+					# print "continous backward diagonal"
+					for i in range(4):
+						heurVal += (2 if BS[4*k+3-i][4*l+i]==ownFlag else 0)
+				if(fl == 1 and count>0):
+					# print "back diagonal kaata"
+					for i in range(4):
+						heurVal += (3 if BS[4*k+3-i][4*l+i]==self.getMarker(ownFlag) else 0)
+
+		####################################################################################
+		#getting centre/corner squares in blocks AND getting squares in centre/corner blocks
+		####################################################################################
+		for k in range(4):
+			for l in range(4):
+
+				#winning/losing centre block
+				if( (k==1 or k==2) and (k==1 or k==2)):
+					if(bs[k][l] == ownFlag):
+						heurVal += 10
+					elif(bs[k][l] == self.getMarker(ownFlag)):
+						heurVal -= 10
+
+				#winning/losing corner blocks
+				if((k==0 or k==3) and (l==0 or l==3)):
+					if(bs[k][l] == ownFlag):
+						heurVal += 10 #3
+					elif(bs[k][l] ==self.getMarker(ownFlag)):
+						heurVal -= 10 #3
+
+				#winning/losing blocks
+				if bs[k][l] == ownFlag:
+					heurVal += 10
+				elif bs[k][l] == self.getMarker(ownFlag):
+					heurVal -= 10
+
+				for i in range(4):
+					for j in range(4):
+
+						#getting centre squares in blocks
+						if ((i==1 or i==2) and (j==1 or j==2)):
+							if BS[4*k+i][4*l+j] == ownFlag:
+								# print "centre square mila"
+								heurVal += 3
+							elif BS[4*k+i][4*l+j] == self.getMarker(ownFlag):
+								# print "centre square kata"
+								heurVal -= 3
+
+						#getting corner squares in blocks
+						if ((i==0 or i==3) and (j==0 or j==3)):
+							if BS[4*k+i][4*l+j] == ownFlag:
+								# print "corner square mila"
+								heurVal += 3
+							elif BS[4*k+i][4*l+j] == self.getMarker(ownFlag):
+								# print "corner square kata"
+								heurVal -= 3
+
+						#getting square in centre block
+						if ((k==1 or k==2) and (l==1 or l==2)):
+							if BS[4*k+i][4*l+j] == ownFlag:
+								# print "centre block me mila"
+								heurVal += 2
+							elif BS[4*k+i][4*l+j] == self.getMarker(ownFlag):
+								# print "centre block me kata"
+								heurVal -= 2
+
+						#getting square in corner block
+						if ((k==0 or k==3) and (l==0 or l==3)):
+							if BS[4*k+i][4*l+j] == ownFlag:
+								# print "corner block me mila"
+								heurVal += 2
+							elif BS[4*k+i][4*l+j] == self.getMarker(ownFlag):
+								# print "corner block me kata"
+								heurVal -= 2
+
+		del tempBoard
+
+		return heurVal
+
+	def getMarker(self, flag):
+		if flag == 'x':
+			return 'o'
+		else:
+			return 'x'
+
+	def evaluate(self, old_move, node, board):
+		#return random.randint(-100,101)
+		return self.heuristics(old_move, node, board)
+
+	def move(self, board, old_move, flag):
+		self.marker = flag
+		self.myMove = True
+
+		#Find the list of valid cells allowed
+		cells = board.find_valid_move_cells(old_move)
+		initMoves = len(cells)
+
+		# Make a copy of board for future use
+		boardCopy = copy.deepcopy(board)
+		move = copy.deepcopy(old_move)
+
+		answer_value = -self.INFINITY
+		# answer_index = []
+
+		for i in range(0, initMoves):
+			temp_value, temp_index = self.IDS(cells[i], boardCopy, move)
+			if (temp_value > answer_value):
+				answer_value = copy.deepcopy(temp_value)
+				answer_index = copy.deepcopy(temp_index)
+				# answer_index = []
+				# answer_index.append(temp_index)
+			# elif (temp_value == answer_value):
+				# answer_index.append(temp_index)
+
+		# moveCell = random.randint(0, len(answer_index)-1)
+		# print answer_value
+		del boardCopy
+		return answer_index
+
+	def MTDf(self, root, f, d, board, old_move):
+		g = f
+		upperBound = self.INFINITY
+		lowerBound = -self.INFINITY
+
+		while (lowerBound < upperBound):
+			beta = max(g, lowerBound + 1)
+			boardCopy = copy.deepcopy(board)
+			boardCopy.update(old_move, root, self.marker)
+			self.myMove = True
+
+			g = self.alphaBeta(root, beta-1, beta, d, boardCopy, old_move)
+			if (g < beta):
+				upperBound = g
+			else:
+				lowerBound = g
+		del boardCopy
+		return g
+
+	def store(self):
+		pass
+
+	def retrieve(self):
+		pass
+
+	def allChildren(self, board, blockIdentifier):
+		cells = board.find_valid_move_cells(blockIdentifier)
+		return cells
+
+	def alphaBeta(self, node, alpha, beta, d, board, old_move):
+		# Transposition table lookup
+		# lowerbound = 2*self.INFINITY
+		# lowerbound, upperbound = self.retrieve(node)
+		#
+		# if lowerbound != 2*self.INFINITY:
+		# 	# Value exists in Transposition table i.e Node value has been determined earlier
+		# 	if lowerbound >= beta:
+		# 		return lowerbound
+		#
+		# 	if upperbound <= alpha:
+		# 		return upperbound)
+		# 	alpha = max(alpha, n.lowerbound);
+		# 	beta = min(beta, node.upperbound)
+
+		boardCopy = copy.deepcopy(board)
+		if self.myMove:
+			boardCopy.update(old_move, node, self.marker)
+		else:
+			boardCopy.update(old_move, node, self.getMarker(self.marker))
+
+		# print "Wah ji wah"
+		# boardCopy.print_board()
+		# print
+		children = self.allChildren(boardCopy, node)
+		nSiblings = len(children)
+
+		# Node is a leaf node
+		if ((d == 0) or (nSiblings == 0)):
+			g = self.evaluate(old_move, node, boardCopy)
+			# print g
+			# boardCopy.print_board()
+			# print "hello"
+			# g = random.randint(-100, 101)
+
+		elif self.myMove:
+			# Mark current node as taken by us for future reference
+			g = -self.INFINITY
+
+			# Save original alpha value
+			a = alpha
+			i = 0
+
+			while ((g < beta) and (i < nSiblings)):
+				self.myMove = False
+				c = children[i]
+				g = max(g, self.alphaBeta(c, a, beta, d-1, boardCopy, node))
+				a = max(a, g)
+				i = i + 1
+
+		# Node is a min node
+		else:
+			# Mark current node as taken by opponent for future reference
+			g = self.INFINITY
+
+			# Save original beta value
+			b = beta
+			i = 0
+
+			while ((g > alpha) and (i < nSiblings)):
+				self.myMove = True
+				c = children[i]
+				g = min(g, self.alphaBeta(c, alpha, b, d-1, boardCopy, node))
+				b = min(b, g)
+				i = i + 1
+
+		del boardCopy
+		return g;
+
+
+	def IDS(self, root, board, old_move):
+		firstGuess = 0
+		#for d in range(1, self.maxSearchDepth):
+		boardCopy = copy.deepcopy(board)
+		firstGuess = self.MTDf(root, firstGuess, self.maxSearchDepth, boardCopy, old_move)
+		#if timeUp:
+		#    break
+		del boardCopy
+		return firstGuess, root
+
+class tictac():
+	def __init__(self):
+		pass
+
+	def move(self, board, old_move, flag):
+		#You have to implement the move function with the same signature as this
+		#Find the list of valid cells allowed
+		cells = ticTacToe().find_valid_move_cells(board,old_move,flag)
+		return cells
+
 class BondPlayer():
 	def __init__(self):
 		self.time_elapsed = 0
-		self.type = 'X'
+		self.type = 'x'
 		self.board = Board()
 		self.INF = 1000000000
+		self.count = 0
+		self.timeLimit = datetime.timedelta(seconds = 14)
+		self.begin = 0
+
 
 	def move(self, game_board, old_move, type_of_move):
 		# game_board.board_status is a 16x16 matrix of all moves
@@ -26,9 +455,9 @@ class BondPlayer():
 
 		self.type = type_of_move
 
-		board = game_board
+		self.board = copy.deepcopy(game_board)
 
-		allowed_moves = board.find_valid_move_cells(old_move)
+		allowed_moves = self.board.find_valid_move_cells(old_move)
 		# when this is first_move some are shitty moves
 
 		ans = -self.INF
@@ -37,70 +466,190 @@ class BondPlayer():
 		r_b = r
 		c_b = c
 
+		self.begin = datetime.datetime.utcnow()
+		while datetime.datetime.utcnow() - self.begin < self.timeLimit:
 
-		for level in range(2, 5, 1):
-			# perform dfs upto level 'level'
+			for level in range(2, 100, 1):
+				# perform dfs upto level 'level'
 
-			ret = self.minimax( 
-				allowed_moves, 1, level, old_move
-			)
+				if datetime.datetime.utcnow() - self.begin >= self.timeLimit:
+					break
 
-			ans = max(ans, ret)
-			if ret[2] >= ans:
-				ans = ret[2]
-				r = ret[0]
-				c = ret[1]
+				self.count = 0
 
-		if r == r_b and c == c_b:
-			print ret[2]
-		return (r, c)
+				ret = self.minimax( 
+					allowed_moves, 1, 
+					level, old_move,
+					-self.INF, self.INF
+				)
 
-	def minimax(self, allowed_moves, level, allowed_level, old_move):
-			if level % 2 == 1:
-				ans = -self.INF
-
-			else:
-				ans = self.INF
-
-			r, c = 0,0
-
-			for move in allowed_moves:
-				if level >= allowed_level:
-					our = self.heuristic()
-					if self.type == 'x':
-						self.type = 'o'
-					else:
-						self.type = 'x'
-					
-					them = self.heuristic()
-					if self.type == 'x':
-						self.type = 'o'
-					else:
-						self.type = 'x'
-					print 'retrning ', our - them;
-					return (r, c, our - them)
-
-				self.board.update(old_move, move, self.type)
-
-				allowed_moves = self.board.find_valid_move_cells(old_move)
-				ret = self.minimax(allowed_moves, level+1, allowed_level, move)
-				if level % 2 == 0:
-					print 'retrning minimising ', ans, ' ret =  ', ret[2]
-					if ret[2] <= ans:
-						ans = ret[2]
-						r = move[0]
-						c = move[1]
+				if datetime.datetime.utcnow() - self.begin >= self.timeLimit:
+					print 'took ', self.count, ' moves at level ', level, '(partial)'
 
 				else:
-					if ret[2] >= ans:
-						ans = ret[2]
-						r = move[0]
-						c = move[1]
-				
-				self.board.update(old_move, move, '-')
+					#print 'remaining time = ', datetime.datetime.utcnow() - self.begin
+					print 'took ', self.count, ' moves at level ', level
+				#print 'took ', self.count, ' moves at level ', level
 
-			some_var = (r, c, ans)
-			return some_var
+				#print 'gett ', ret[2]
+				#ans = max(ans, ret)
+				if ret[2] >= ans:
+					ans = ret[2]
+					r = ret[0]
+					c = ret[1]
+
+		# if r == r_b and c == c_b:
+		# 	print ret[2]
+		# else:
+		# 	print '0'
+		#print 'final = ', ans
+		return (r, c)
+
+	def switch_type(self):
+		if self.type == 'x':
+			self.type = 'o'
+		else:
+			self.type = 'x'
+
+	# def alphabeta(self, node, depth, alpha, beta, maximizingPlayer)
+ #      	if depth = 0 or node is a terminal node
+ #          	return the heuristic value of node
+      	
+ #      	if maximizingPlayer
+ #          	v = -self.INF
+ #          	for each child of node
+	# 			v = max(v, alphabeta(child, depth - 1, alpha, beta, FALSE))
+	# 			alpha = max(alpha, v)
+	# 			if beta <= alpha
+	# 				break (* beta cut-off *)
+	# 		return v
+      	
+ #      	else
+ #          	v = self.INF
+ #          	for each child of node
+ #              	v = min(v, alphabeta(child, depth - 1, alpha, beta, TRUE))
+ #              	beta = min(beta, v)
+ #              	if beta <= alpha
+ #                  	break (* alpha cut-off *)
+ #          	return v
+
+	def minimax(self, allowed_moves, level, allowed_level, old_move, alpha, beta):
+		self.count += 1
+		#print 'took ', self.count, ' moves at level ', level
+
+		if level % 2 == 1:
+			ans = -self.INF
+
+		else:
+			ans = self.INF
+
+		r, c = 0, 0
+
+		for move in allowed_moves:
+			if datetime.datetime.utcnow() - self.begin < self.timeLimit:
+
+				if alpha < beta:
+
+					if level >= allowed_level:
+
+						our = self.heuristic()
+						self.switch_type()
+						
+						them = self.heuristic()
+						self.switch_type()
+						
+						#print 'returning our: ', our, ' them: ', them
+						return (r, c, our - them)
+
+					self.board.update(old_move, move, self.type)
+
+					self.switch_type()
+
+					allowed_moves2 = self.board.find_valid_move_cells(move)
+
+					#print 'len = ', len(allowed_moves2)
+					#if len(allowed_moves2) == 0:
+					# print 'debug', move 
+					# self.board.print_board();
+					# print 'debug end'
+
+					ret = self.minimax(allowed_moves2, level+1, allowed_level, move, alpha, beta)
+					
+					if level % 2 == 0:
+						#print 'returning minimising ', ans, ' ret =  ', ret[2]
+						if ret[2] <= ans:
+
+							ans = ret[2]
+							r = move[0]
+							c = move[1]
+
+						beta = min(beta, ret[2])
+
+					else:
+						#print 'returning maximising ', ans, ' ret =  ', ret[2]
+						if ret[2] >= ans:
+
+							ans = ret[2]
+							r = move[0]
+							c = move[1]
+
+						alpha = max(alpha, ret[2])
+					
+					ree = self.update(move, '-')
+					#print 'getting', ree
+					#self.board.board_status[move[0]][move[1] = '-'
+
+					self.switch_type()
+
+			else:
+				break
+
+		if len(allowed_moves) == 0:
+
+			ans *= -1
+			self.count-=1
+
+		if ans == self.INF or ans == -self.INF:
+			ans *= -1
+			#print 'yolo'
+
+		return (r, c, ans)
+
+	def update(self, new_move, ply):
+		#updating the game board and block status as per the move that has been passed in the arguements
+
+		self.board.board_status[new_move[0]][new_move[1]] = ply
+
+		x = new_move[0]/4
+		y = new_move[1]/4
+		fl = 0
+		bs = self.board.board_status
+		#checking if a block has been won or drawn or not after the current move
+		for i in range(4):
+			#checking for horizontal pattern(i'th row)
+			if (bs[4*x+i][4*y] == bs[4*x+i][4*y+1] == bs[4*x+i][4*y+2] == bs[4*x+i][4*y+3]) and (bs[4*x+i][4*y] == ply):
+				self.board.block_status[x][y] = ply
+				return 'SUCCESSFUL'
+			#checking for vertical pattern(i'th column)
+			if (bs[4*x][4*y+i] == bs[4*x+1][4*y+i] == bs[4*x+2][4*y+i] == bs[4*x+3][4*y+i]) and (bs[4*x][4*y+i] == ply):
+				self.board.block_status[x][y] = ply
+				return 'SUCCESSFUL'
+
+		#checking for diagnol pattern
+		if (bs[4*x][4*y] == bs[4*x+1][4*y+1] == bs[4*x+2][4*y+2] == bs[4*x+3][4*y+3]) and (bs[4*x][4*y] == ply):
+			self.board.block_status[x][y] = ply
+			return 'SUCCESSFUL'
+		if (bs[4*x+3][4*y] == bs[4*x+2][4*y+1] == bs[4*x+1][4*y+2] == bs[4*x][4*y+3]) and (bs[4*x+3][4*y] == ply):
+			self.board.block_status[x][y] = ply
+			return 'SUCCESSFUL'
+
+		#checking if a block has any more cells left or has it been drawn
+		for i in range(4):
+			for j in range(4):
+				if bs[4*x+i][4*y+j] =='-':
+					return 'SUCCESSFUL'
+		self.board.block_status[x][y] = 'd'
+		return 'SUCCESSFUL'
 
 	def heuristic(self):
 
@@ -539,8 +1088,10 @@ if __name__ == '__main__':
 		obj1 = Manual_Player()
 		obj2 = Manual_Player()
 	elif option == '4':
-		obj1 = Random_Player()
-		obj2 = BondPlayer()
+		obj1 = BondPlayer()
+		obj2 = player2()
+		obj3 = Random_Player()
+		obj4 = Intelligent_Player()
 	else:
 		print 'Invalid option'
 		sys.exit(1)
